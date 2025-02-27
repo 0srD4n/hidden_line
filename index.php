@@ -1,43 +1,10 @@
 <?php
-session_start();
-
-// Database configuration
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root'); 
-define('DB_PASS', '180406');
-define('DB_NAME', 'link');
-
-// Connect to database
-try {
-    $pdo = new PDO("mysql:host=".DB_HOST.";dbname=".DB_NAME, DB_USER, DB_PASS);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
-}
-// create table link if not exists
-$pdo->exec("CREATE TABLE IF NOT EXISTS links (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    url VARCHAR(255) NOT NULL,
-    short_url VARCHAR(255) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)");
-// create table users if not exists
-$pdo->exec("CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL
-)");
 
 
 // Route handling
 $route = $_SERVER['REQUEST_URI'];
 $routes = [
-    '/' => 'welcome_page',
-    '/register' => 'register_page',
-    '/login' => 'login_page',
-    '/dashboard' => 'dashboard_page',
-    '/profile' => 'profile_page',
-    '/logout' => 'logout_user'
+    '/' => 'welcome_page'
 ];
 
 if (array_key_exists($route, $routes)) {
@@ -50,35 +17,20 @@ if (array_key_exists($route, $routes)) {
 }
 
 // Authentication functions
-function register_user($username, $password, $email) {
-    global $pdo;
-    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-    $stmt = $pdo->prepare("INSERT INTO users (username, password, email) VALUES (?, ?, ?)");
-    return $stmt->execute([$username, $hashed_password, $email]);
-}
-
-function login_user($username, $password) {
-    global $pdo;
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
-    
-    if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        return true;
+$search_engines = [];
+$search_json = file_get_contents('./link/search.json');
+if ($search_json !== false) {
+    $search_engines = json_decode($search_json, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log('Failed to decode search.json: ' . json_last_error_msg());
+        $search_engines = [];
     }
-    return false;
+} else {
+    error_log('Failed to read search.json file');
 }
-
-function logout_user() {
-    session_destroy();
-    header('Location: /');
-    exit();
-}
-
 // Page handlers
 function print_header($title, $class) {
+    global $nav_class;
     // Validate and sanitize inputs
     $safe_title = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
     $safe_class = htmlspecialchars($class, ENT_QUOTES, 'UTF-8');
@@ -105,78 +57,163 @@ function print_header($title, $class) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <title>' . $safe_title . '</title>
-        <link rel="stylesheet" href="/style/' . $safe_class . '">
+        <link rel="stylesheet" href="/style/' . $safe_class .'">
         <link rel="icon" type="image/x-icon" href="/favicon.ico">
         <link rel="stylesheet" href="/style/main.css">
         <script src="/js/main.js" defer></script>
-    </head>
-    <body>
-    <nav class="main-nav">
-        <div class="nav-brand">Hidden Line</div>
-        <div class="nav-links">
-            ' . (isset($_SESSION['user_id']) ? 
-            'Welcome, ' . htmlspecialchars($_SESSION['username']) . 
-            ' | <a href="/dashboard">Dashboard</a>
-            | <a href="/profile">Profile</a>
-            | <a href="/logout">Logout</a>' 
-            : '<a href="/login">Login</a> | <a href="/register">Register</a>') . '
-        </div>
-    </nav>';
+    </head>';
+
+    include 'templates/nav.php';
+
 }
+
 
 function welcome_page() {
-    print_header('Welcome', 'welcome.css');
-    echo '<div class="container">
-        <h1>Welcome to Hidden Line</h1>
-        <p>This is a feature-rich web application with user authentication and more.</p>
-    </div>';
+    print_header('Hidden Line', 'welcome.css');
+    echo '
+        <div class="container">
+            <h1>Welcome to Hidden Line</h1>
+            <p>Hidden Line is a website that shares a list of links connected to Tor and clearnet. If you want your link to be featured here, you can join the Telegram group below or contact us at <a style="color: #00ff9d;" href="mailto:XplDan@proton.me">XplDan@proton.me</a>. </p>
+            <p> if you found the dead link, please contact us at <a style="color: #00ff9d;" href="mailto:XplDan@proton.me">XplDan@proton.me</a>. </p>
+        </div>';
+        print_mainpage();
+
     include 'templates/footer.php';
 }
+function print_mainpage(){
+    $search_engines = json_decode(file_get_contents('link/search.json'), true)['search'];
+    $chat_rooms = json_decode(file_get_contents('link/chat_room.json'), true)['chat'];
+    
+    echo '<div class="main-content">';
 
-function register_page() {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (register_user($_POST['username'], $_POST['password'], $_POST['email'])) {
-            header('Location: /login');
-            exit();
+    // Search Engines Section
+    echo '<div class="category-section">
+            <h2>Search Engine</h2>';
+    if (!empty($search_engines)) {
+        echo '<table class="dark-links">
+                <tr>
+                    <th>Service</th>
+                    <th>Description</th>
+                    <th>onion Link</th>
+                </tr>';
+        
+        foreach($search_engines as $engine) {
+            $title = !empty($engine['title']) ? htmlspecialchars($engine['title'], ENT_QUOTES, 'UTF-8') : '';
+            $description = !empty($engine['description']) ? htmlspecialchars($engine['description'], ENT_QUOTES, 'UTF-8') : '';
+            $url = !empty($engine['url']) ? htmlspecialchars($engine['url'], ENT_QUOTES, 'UTF-8') : '';
+
+            if ($title && $description && $url) {
+                echo '<tr>
+                        <td>' . $title . '</td>
+                        <td>' . $description . '</td>
+                        <td><a href="' . $url . '" rel="noopener noreferrer" target="_blank"><code>' . $title . '</code></a></td>
+                      </tr>';
+            }
         }
+        echo '</table>';
+    } else {
+        echo '<p class="error">No search engines available at the moment.</p>';
     }
-    print_header('Register', 'auth.css');
-    include 'templates/register_form.php';
-    include 'templates/footer.php';
-}
+    echo '</div>';
 
-function login_page() {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (login_user($_POST['username'], $_POST['password'])) {
-            header('Location: /dashboard');
-            exit();
+    // Chat Rooms Section
+    echo '<div class="category-section">
+            <h2>Chat Room</h2>';
+    if (!empty($chat_rooms)) {
+        echo '<table class="dark-links">
+                <tr>
+                    <th>Service</th>
+                    <th>Description</th>
+                    <th>onion Link</th>
+                </tr>';
+        
+        foreach($chat_rooms as $chat) {
+            $title = !empty($chat['title']) ? htmlspecialchars($chat['title'], ENT_QUOTES, 'UTF-8') : '';
+            $description = !empty($chat['description']) ? htmlspecialchars($chat['description'], ENT_QUOTES, 'UTF-8') : '';
+            $url = !empty($chat['url']) ? htmlspecialchars($chat['url'], ENT_QUOTES, 'UTF-8') : '';
+
+            if ($title && $description && $url) {
+                echo '<tr>
+                        <td>' . $title . '</td>
+                        <td>' . $description . '</td>
+                        <td><a href="' . $url . '" rel="noopener noreferrer" target="_blank"><code>' . $title . '</code></a></td>
+                      </tr>';
+            }
         }
+        echo '</table>';
+    } else {
+        echo '<p class="error">No chat rooms available at the moment.</p>';
     }
-    print_header('Login', 'auth.css');
-    include 'templates/login_form.php';
-    include 'templates/footer.php';
-}
+    echo '</div>';
 
-function dashboard_page() {
-    if (!isset($_SESSION['user_id'])) {
-        header('Location: /login');
-        exit();
-    }
-    print_header('Dashboard', 'dashboard.css');
-    include 'templates/dashboard.php';
-    include 'templates/footer.php';
-}
+    // Marketplaces Section
+    echo '<div class="category-section">
+            <h2>Marketplaces</h2>
+            <table class="dark-links">
+                <tr>
+                    <th>Service</th>
+                    <th>Description</th>
+                    <th>onion Link</th>
+                </tr>
+                <tr>
+                    <td>Dark Market</td>
+                    <td>General marketplace</td>
+                    <td><code>darkmarket4ht.onion</code></td>
+                </tr>
+                <tr>
+                    <td>Hidden Store</td>
+                    <td>Digital goods marketplace</td>
+                    <td><code>hiddenstore2j.onion</code></td>
+                </tr>
+            </table>
+        </div>';
 
-function profile_page() {
-    if (!isset($_SESSION['user_id'])) {
-        header('Location: /login');
-        exit();
-    }
-    print_header('Profile', 'profile.css');
-    include 'templates/profile.php';
-    include 'templates/footer.php';
-}
+    // Information & News Section
+    echo '<div class="category-section">
+            <h2>Information & News</h2>
+            <table class="dark-links">
+                <tr>
+                    <th>Service</th>
+                    <th>Description</th>
+                    <th>onion Link</th>
+                </tr>
+                <tr>
+                    <td>Dark News</td>
+                    <td>Uncensored news portal</td>
+                    <td><code>darknews5hnd.onion</code></td>
+                </tr>
+                <tr>
+                    <td>Hidden Wiki</td>
+                    <td>Information directory</td>
+                    <td><code>hidwiki4tf2s.onion</code></td>
+                </tr>
+            </table>
+        </div>';
 
+    // Security Services Section
+    echo '<div class="category-section">
+            <h2>Security Services</h2>
+            <table class="dark-links">
+                <tr>
+                    <th>Service</th>
+                    <th>Description</th>
+                    <th>onion Link</th>
+                </tr>
+                <tr>
+                    <td>SecureVPN</td>
+                    <td>Anonymous VPN service</td>
+                    <td><code>securevpn3fd.onion</code></td>
+                </tr>
+                <tr>
+                    <td>CryptoHost</td>
+                    <td>Anonymous hosting</td>
+                    <td><code>cryptohost4d.onion</code></td>
+                </tr>
+            </table>
+        </div>';
+
+    echo '</div>';
+}
 function error_page() {
     print_header('Error 404', 'error.css');
     echo '<div class="container">

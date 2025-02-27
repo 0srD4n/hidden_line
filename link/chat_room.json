@@ -1,0 +1,30 @@
+{
+    "chat": [
+        {
+            "title": "DanChat",
+            "description": "General chat with complex features",
+            "url": "http://dansddkpbw733xhoqaohubwpj4kobqjlmiw5h4fa4xdnden4o474qzid.onion/"
+        },
+        {
+            "title": "DarkForest",
+            "description": "Invite Only",
+            "url": "http://dkforestseeaaq2dqz2uflmlsybvnq2irzn4ygyvu53oazyorednviid.onion/"
+        },
+        {
+            "title": "Aera23's chat",
+            "description": "General chat",
+            "url": "http://forwhoallvglhpsx6dhycfb4fu4a2lqkvxtwlivruw765qxofyns7wqd.onion/g3.php"
+        },
+        {
+            "title": "The Grey Zone",
+            "description": "Requires membership in The Grey",
+            "url": "http://zqhnmeq5hkn4pchjxvwwyuufow265dzqxn22hiaef5d4timsrpvdp6ad.onion/TheGreyZone/chat.php"
+        },
+        {
+            "title": "Black Hat Chat",
+            "description": "General chat",
+            "url": "http://blackhatchat.onion/"
+        }
+
+    ]
+}
