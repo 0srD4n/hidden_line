@@ -60,7 +60,6 @@ function print_header($title, $class) {
         <link rel="stylesheet" href="/style/' . $safe_class .'">
         <link rel="icon" type="image/x-icon" href="/favicon.ico">
         <link rel="stylesheet" href="/style/main.css">
-        <script src="/js/main.js" defer></script>
     </head>';
 
     include 'templates/nav.php';
@@ -70,12 +69,20 @@ function print_header($title, $class) {
 
 function welcome_page() {
     print_header('Hidden Line', 'welcome.css');
+   
     echo '
         <div class="container">
             <h1>Welcome to Hidden Line</h1>
             <p>Hidden Line is a website that shares a list of links connected to Tor and clearnet. If you want your link to be featured here, you can join the Telegram group below or contact us at <a style="color: #00ff9d;" href="mailto:XplDan@proton.me">XplDan@proton.me</a>. </p>
             <p> if you found the dead link, please contact us at <a style="color: #00ff9d;" href="mailto:XplDan@proton.me">XplDan@proton.me</a>. </p>
         </div>';
+        echo '<ul class="nav-links">
+        <li class="nav-item"><a class="nav-link" href="#forums">Forums</a></li>
+        <li class="nav-item"><a class="nav-link" href="#chat">Chat</a></li>
+        <li class="nav-item"><a class="nav-link" href="#mail">Mail</a></li>
+        <li class="nav-item"><a class="nav-link" href="#pastebin">Pastebin</a></li>
+        <li class="nav-item"><a class="nav-link" href="#search">Search</a></li>
+        </ul>';
         print_mainpage();
 
     include 'templates/footer.php';
@@ -83,11 +90,13 @@ function welcome_page() {
 function print_mainpage(){
     $search_engines = json_decode(file_get_contents('link/search.json'), true)['search'];
     $chat_rooms = json_decode(file_get_contents('link/chat_room.json'), true)['chat'];
-    
+    $mail_services = json_decode(file_get_contents('link/mail.json'), true)['mail'];
+    $pastebin_files = json_decode(file_get_contents('link/pastebin_files.json'), true)['pastebin'];
+    $forums = json_decode(file_get_contents('link/forums.json'), true)['forums'];
     echo '<div class="main-content">';
 
     // Search Engines Section
-    echo '<div class="category-section">
+    echo '<div class="category-section" id="search">
             <h2>Search Engine</h2>';
     if (!empty($search_engines)) {
         echo '<table class="dark-links">
@@ -117,7 +126,7 @@ function print_mainpage(){
     echo '</div>';
 
     // Chat Rooms Section
-    echo '<div class="category-section">
+    echo '<div class="category-section" id="chat">
             <h2>Chat Room</h2>';
     if (!empty($chat_rooms)) {
         echo '<table class="dark-links">
@@ -146,73 +155,90 @@ function print_mainpage(){
     }
     echo '</div>';
 
-    // Marketplaces Section
-    echo '<div class="category-section">
-            <h2>Marketplaces</h2>
-            <table class="dark-links">
+    // Pastebin & File Sharing Section
+    echo '<div class="category-section" id="pastebin">
+            <h2>Mail Services anonymous</h2>';
+    if (!empty($mail_services)) {
+        echo '<table class="dark-links">
                 <tr>
                     <th>Service</th>
-                    <th>Description</th>
                     <th>onion Link</th>
-                </tr>
-                <tr>
-                    <td>Dark Market</td>
-                    <td>General marketplace</td>
-                    <td><code>darkmarket4ht.onion</code></td>
-                </tr>
-                <tr>
-                    <td>Hidden Store</td>
-                    <td>Digital goods marketplace</td>
-                    <td><code>hiddenstore2j.onion</code></td>
-                </tr>
-            </table>
-        </div>';
+                </tr>';
+        
+        foreach($pastebin_files as $pastebin) {
+            $title = !empty($pastebin['title']) ? htmlspecialchars($pastebin['title'], ENT_QUOTES, 'UTF-8') : '';
+            $url = !empty($pastebin['url']) ? htmlspecialchars($pastebin['url'], ENT_QUOTES, 'UTF-8') : '';
 
-    // Information & News Section
-    echo '<div class="category-section">
-            <h2>Information & News</h2>
-            <table class="dark-links">
-                <tr>
-                    <th>Service</th>
-                    <th>Description</th>
-                    <th>onion Link</th>
-                </tr>
-                <tr>
-                    <td>Dark News</td>
-                    <td>Uncensored news portal</td>
-                    <td><code>darknews5hnd.onion</code></td>
-                </tr>
-                <tr>
-                    <td>Hidden Wiki</td>
-                    <td>Information directory</td>
-                    <td><code>hidwiki4tf2s.onion</code></td>
-                </tr>
-            </table>
-        </div>';
-
-    // Security Services Section
-    echo '<div class="category-section">
-            <h2>Security Services</h2>
-            <table class="dark-links">
-                <tr>
-                    <th>Service</th>
-                    <th>Description</th>
-                    <th>onion Link</th>
-                </tr>
-                <tr>
-                    <td>SecureVPN</td>
-                    <td>Anonymous VPN service</td>
-                    <td><code>securevpn3fd.onion</code></td>
-                </tr>
-                <tr>
-                    <td>CryptoHost</td>
-                    <td>Anonymous hosting</td>
-                    <td><code>cryptohost4d.onion</code></td>
-                </tr>
-            </table>
-        </div>';
-
+            if ($title && $url) {
+                echo '<tr>
+                        <td>' . $title . '</td>
+                        <td><a href="' . $url . '" rel="noopener noreferrer" target="_blank"><code>' . $title . '</code></a></td>
+                      </tr>';
+            }
+        }
+        echo '</table>';
+    } else {
+        echo '<p class="error">No pastebin & file sharing available at the moment.</p>';
+    }
     echo '</div>';
+
+    echo '<div class="category-section" id="mail">
+    <h2>Mail Services anonymous</h2>';
+if (!empty($mail_services)) {
+echo '<table class="dark-links">
+        <tr>
+            <th>Service</th>
+            <th>Description</th>
+            <th>onion Link</th>
+        </tr>';
+
+foreach($mail_services as $mail) {
+    $title = !empty($mail['title']) ? htmlspecialchars($mail['title'], ENT_QUOTES, 'UTF-8') : '';
+    $url = !empty($mail['url']) ? htmlspecialchars($mail['url'], ENT_QUOTES, 'UTF-8') : '';
+    $description = !empty($mail['description']) ? htmlspecialchars($mail['description'], ENT_QUOTES, 'UTF-8') : '';
+    if ($title && $url) {
+        echo '<tr>
+                <td>' . $title . '</td>
+                <td>' . $description . '</td>   
+                <td><a href="' . $url . '" rel="noopener noreferrer" target="_blank"><code>' . $title . '</code></a></td>
+              </tr>';
+    }
+}
+echo '</table>';
+} else {
+echo '<p class="error">No pastebin & file sharing available at the moment.</p>';
+}
+echo '</div>';
+
+
+    
+echo '<div class="category-section" id="forums">
+<h2>Forums Hacking</h2>';
+if (!empty($forums)) {
+echo '<table class="dark-links">
+    <tr>
+        <th>Service</th>
+        <th>Description</th>
+        <th>onion Link</th>
+    </tr>';
+
+foreach($forums as $forum) {
+$title = !empty($forum['title']) ? htmlspecialchars($forum['title'], ENT_QUOTES, 'UTF-8') : '';
+$url = !empty($forum['url']) ? htmlspecialchars($forum['url'], ENT_QUOTES, 'UTF-8') : '';
+$description = !empty($forum['description']) ? htmlspecialchars($forum['description'], ENT_QUOTES, 'UTF-8') : '';
+if ($title && $url) {
+    echo '<tr>
+            <td>' . $title . '</td>
+            <td>' . $description . '</td>   
+            <td><a href="' . $url . '" rel="noopener noreferrer" target="_blank"><code>' . $title . '</code></a></td>
+          </tr>';
+}
+}
+echo '</table>';
+} else {
+echo '<p class="error">No pastebin & file sharing available at the moment.</p>';
+}
+echo '</div>';
 }
 function error_page() {
     print_header('Error 404', 'error.css');
